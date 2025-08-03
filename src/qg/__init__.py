@@ -4,6 +4,6 @@ from qg.solver.qg import QG
 from mura import data_run
 
 def autorun(_config, **kwargs):
-    with data_run(_config) as save_path:
+    with data_run(_config, copy=True) as save_path:
         qg = QG(_config)
         qg.solve(save_path=save_path, **kwargs)

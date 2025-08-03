@@ -35,7 +35,7 @@ def test_fpc():
 def test_ideal_cape_high_re():
     _config = config()
     _config.logging.task_name = "test_ideal_cape_high_re"
-    _config.logging.run_name = ""
+    _config.logging.run_name = "with_beta_plane"
     _config.forcing = None
     _config.grid.Lx = 2 * _config.grid.Ly
     _config.grid.Nx = 512 + 512
@@ -49,6 +49,7 @@ def test_ideal_cape_high_re():
     _config.bc.function = 'const-outlet-diffuse-rtd'
     _config.bc.width = 0.1 # Width of the sponge region
     _config.bc.eta = 4.0 # Sponge strength
+    # _config.pde.B = 20.0 # beta plane
     _config.time.dt = 1e-4 # param.dt
     _config.time.save_rate = 500 # param.sim_steps
     _config.time.T = 24

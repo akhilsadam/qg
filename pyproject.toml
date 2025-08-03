@@ -20,7 +20,7 @@ dependencies = [
     "jpcm",
     "pyyaml",
     "pytest",
-    "mura>=0.2.4",
+    "mura>=0.2.19",
     "netcdf4",
     # optional
     # "mura", # for deploy scripts; obsoleted here...
