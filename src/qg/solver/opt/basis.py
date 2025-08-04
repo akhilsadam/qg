@@ -12,20 +12,20 @@ class _state:
             self.update_uv()
         
     def update_uv(self):
-        self.ph = - self.qh * self.derivative.irsq
-        self.uh = 1j * self.derivative.ky * self.ph
-        self.vh = -1j * self.derivative.kr * self.ph
+        self.ph = - self.derivative.inv_laplacian * self.qh # streamfunction
+        self.uh = self.derivative.dy * self.ph
+        self.vh = - self.derivative.dx * self.ph
         
     def update_potential_flow(self):    
         self.uh = self.uh + self.uh_p + self.x_adv * self.dt
         self.vh = self.vh + self.vh_p + self.y_adv * self.dt
         
     def update_qp(self):
-        self.qh = - 1j * self.derivative.kr * self.vh + 1j * self.derivative.ky * self.uh
-        self.ph = - self.qh * self.derivative.irsq
+        self.qh = self.derivative.dx * self.vh - self.derivative.dy * self.uh # curl of v
+        self.ph = - self.derivative.inv_laplacian * self.qh
         
-        uh_w = 1j * self.derivative.ky * self.ph
-        vh_w = -1j * self.derivative.kr * self.ph
+        uh_w = self.derivative.dy * self.ph # dp/dy
+        vh_w = - self.derivative.dx * self.ph # - dp/dx
         
         self.uh_p = self.uh - uh_w
         self.vh_p = self.vh - vh_w

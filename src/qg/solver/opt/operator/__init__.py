@@ -66,7 +66,7 @@ class ImplicitLinearOperator(_Math):
         mu = self.params.mu
         B = self.params.B
         # Calculate the linear term (first one is diffusion, then bottom drag, then Coriolis with beta term)
-        return -nu * self.derivative.krsq - mu - 1j * B * self.derivative.kr * self.derivative.irsq
+        return - nu * self.derivative.laplacian - mu - B * self.derivative.dx * self.derivative.inv_laplacian
 
     def __repr__(self):
         return (f"ImplictLinearOperator(nu={self.params.nu}, mu={self.params.mu},"

@@ -7,8 +7,8 @@ class Derivative:
         self.grid = grid
         self.device = grid.device
 
-        self.dx =  grid.Lx / (grid.Nx)
-        self.dy =  grid.Ly / (grid.Ny)
+        # self.dx =  grid.Lx / (grid.Nx)
+        # self.dy =  grid.Ly / (grid.Ny)
         
 
         # Number of wavenumber components (half of real grid in x-direction)
@@ -21,20 +21,24 @@ class Derivative:
         )[None,:,:].to(self.device) 
         
         # Derivative in x
-        self.kr = torch.reshape((torch.fft.rfftfreq(grid.Nx, grid.Lx / (grid.Nx * 2 * torch.pi))), 
+        self.kx = torch.reshape((torch.fft.rfftfreq(grid.Nx, grid.Lx / (grid.Nx * 2 * torch.pi))), 
             (1, self.dk)
         )[None,:,:].to(self.device)
 
+        self.dy = - 1j * self.ky  # Negative sign for consistency with spectral convention
+        self.dx = - 1j * self.kx  # Negative sign for consistency with spectral convention
+
         # Squared wavenumbers (for second derivatives)
-        self.krsq = self.kr**2 + self.ky**2  
+        self.krsq = self.kx**2 + self.ky**2  
+        self.laplacian = self.krsq
 
         # Inverse squared wavenumbers (and handling zero division)
-        self.irsq = 1.0/self.krsq
-        self.irsq[:,0,0] = 0.0 #
+        self.inv_laplacian = 1.0/self.laplacian
+        self.inv_laplacian[:,0,0] = 0.0 #
         
         # Dealiasing wavenumber for stability and mask
         dealias_factor=1/3
-        self.k_cut = math.sqrt(2) * (1 - dealias_factor) * min(self.ky.max(), self.kr.max())
+        self.k_cut = math.sqrt(2) * (1 - dealias_factor) * min(self.ky.max(), self.kx.max())
         
         self.sqrt_krsq = torch.sqrt(self.krsq)
         self.alias_mask = (self.sqrt_krsq > self.k_cut)
@@ -61,9 +65,12 @@ class Derivative:
         """ Move spectral operator tensors to another device. """
         self.device = device
         self.ky = self.ky.to(device)
-        self.kr = self.kr.to(device)
-        self.krsq = self.krsq.to(device)
-        self.irsq = self.irsq.to(device)
+        self.kx = self.kx.to(device)
+        self.dy = self.dy.to(device)
+        self.dx = self.dx.to(device)
+        self.laplacian = self.laplacian.to(device)
+        self.inv_laplacian = self.inv_laplacian.to(device)
+        self.alias_mask = self.alias_mask.to(device)
 
     def __repr__(self):
         return (f"Derivative: Nx={self.grid.Nx}, Ny={self.grid.Ny}, dk={self.dk}, "

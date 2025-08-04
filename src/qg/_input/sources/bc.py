@@ -12,7 +12,7 @@ class Sponge:
         _eta = eta * state.dt
         
         ### vorticity / open bc
-        outlet_vorticity_sponge = to_spectral(_ramp * to_physical(1j * derivative.kr * state.vh - 1j * derivative.ky * state.uh)) / _eta
+        outlet_vorticity_sponge = to_spectral(_ramp * to_physical(- derivative.dx * state.vh + derivative.dy * state.uh)) / _eta
         return outlet_vorticity_sponge
     
     @staticmethod
@@ -24,12 +24,13 @@ class Sponge:
         ### velocity / closed bc
         masked_vh_delta = to_spectral(_outlet_v2 * to_physical(state.vh - vh)) 
         masked_uh_delta = to_spectral(_outlet_v2 * to_physical(state.uh - uh))
-        outlet_velocity_sponge = (1j * derivative.kr * masked_vh_delta - 1j * derivative.ky * masked_uh_delta) / _eta
+        outlet_velocity_sponge = (derivative.dx * masked_vh_delta - derivative.dy * masked_uh_delta) / _eta
         
         ### diffusion
-        outlet_diffusion = -0.1 * derivative.krsq * to_spectral(_outlet_v1_ramp * to_physical(state.qh))
+        # outlet_diffusion = -0.1 * derivative.laplacian * to_spectral(_outlet_v1_ramp * to_physical(state.qh))
             
-        return outlet_diffusion + outlet_velocity_sponge # outlet_vorticity_sponge + 
+        # return outlet_diffusion + outlet_velocity_sponge # outlet_vorticity_sponge + 
+        return outlet_velocity_sponge
     
 
 class Flow:
@@ -39,12 +40,12 @@ class Flow:
         @lru_cache(maxsize=1)
         def base_flow():
             flow_uh = torch.zeros_like(state.uh)
-            flow_uh[...,0,0] = -inlet_velocity # direction flip
+            flow_uh[...,0,0] = inlet_velocity # direction flip
             flow_vh = flow_uh * 0.0
             return flow_uh, flow_vh
         
         flow_uh, flow_vh = base_flow()
-        state.uh[...,0,0] = -inlet_velocity # direction flip
+        state.uh[...,0,0] = inlet_velocity # direction flip
         state.vh[...,0,0] = 0.0
         
         return flow_uh, flow_vh
