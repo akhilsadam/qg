@@ -5,6 +5,12 @@
 - Run an example with `make test-generate`
 
 You may need an appropriate version of FFMPEG, and sufficiently up-to-date Linux.
+Note example config files are in `conf/` and can be edited as presets.
+
+## Usage
+This code is provided as a library-style package, so you should import the `qg` package after the quickstart to use it in non-preset ways.
+See `__init__.py` for a simple example with `direct_solver`, that exposes the `QG` instance with functions in `qg`.
+
 
 ## Changelog [`package-variant`]:
 
