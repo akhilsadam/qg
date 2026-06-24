@@ -45,9 +45,16 @@ class QG():
                                         sources=explicit_sources) 
         
         self.dt = param.time.dt
+        
+        try:
+            self.step = torch.compile(self._step)
+        except Exception as e:
+            self.logger.warn(f"Failed to compile stepper with exception {e}")
+            self.step = self._step
+        
         self.logger.info(f"Initialized QG model with {self.grid.Nx}x{self.grid.Ny} grid on {self.grid.device}")
 
-    def step(self, state):
+    def _step(self, state):
         # state.dt = self.dt # Not sure if this is necessary, need to think about adaptive time stepping TODO
 
         # vorticity step
