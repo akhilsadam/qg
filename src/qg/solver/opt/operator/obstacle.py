@@ -101,6 +101,40 @@ def brinkman_friction_slip_penalty(op, state, chi, chi_velocity):
     
     sponge = (-1 * op.derivative.dx * v_chi_h + op.derivative.dy * u_chi_h) / eta # - d/dx(chi*v) + d/dy(chi*u)
     
+    # u_corr = u * (1 - chi) + u_chi
+    # v_corr = v * (1 - chi) + v_chi
+    
+    # state.uh = to_spectral(u_corr)
+    # state.vh = to_spectral(v_corr)
+    
+    return sponge
+
+    
+def brinkman_friction_slip_w_pot_penalty(op, state, chi, chi_velocity):
+    """
+    Computes the brinkman volume penalization for mask (chi) in spectral space (h).
+    """
+    eta = op.params.penalty * op.dt
+    friction = op.params.friction
+
+    u = to_physical(state.uh) # convert to physical space
+    v = to_physical(state.vh)
+    q = to_physical(state.qh)
+    
+    du = chi * (u - chi_velocity[0])
+    dv = chi * (v - chi_velocity[1])
+    dq = chi * q
+    
+    u_chi_h = to_spectral(du)
+    v_chi_h = to_spectral(dv)
+    q_chi_h = to_spectral(dq)
+    
+    v_sponge = (-1 * op.derivative.dx * v_chi_h + op.derivative.dy * u_chi_h) / eta # - d/dx(chi*v) + d/dy(chi*u)
+    q_sponge = -1 * q_chi_h / eta
+    sponge = v_sponge * friction + q_sponge * (1-friction)
+    
+    return sponge
+
     
     # modify flow field inside obstacle
     
@@ -115,14 +149,6 @@ def brinkman_friction_slip_penalty(op, state, chi, chi_velocity):
     # print(yc.shape)
     # print(dvtr.shape, vc.shape, chi.shape)
  
-    
-    u_corr = u * (1 - chi) + u_chi
-    v_corr = v * (1 - chi) + v_chi
-    
-    state.uh = to_spectral(u_corr)
-    state.vh = to_spectral(v_corr)
-    
-    return sponge
 
 # def inlet_outlet(op, state,
 #                     inlet_velocity=1.0, mn=0.4, mx=0.6, eta=2.0,

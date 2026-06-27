@@ -10,7 +10,7 @@ def add_margin(pil_img, width, height, top, left, color):
     return result
 
 def circular(grid, derivative, # add state as first argument if time-dependent
-             r, tolerance=1e-3,
+             r, tolerance=1e-3, invert=False,
              **kwargs):
     # Use grid object for domain size and number of grid points
     Lx = grid.Lx
@@ -33,6 +33,9 @@ def circular(grid, derivative, # add state as first argument if time-dependent
     mask = torch.zeros_like(distance)
     mask[distance < r] = 1  # Inside the circle
     mask[torch.abs(distance - r) < tolerance] = 0.5  # Boundary (within tolerance)
+    
+    if invert:
+        mask = 1 - mask
     
     return mask[None,:,:]  # Add batch dimension
 

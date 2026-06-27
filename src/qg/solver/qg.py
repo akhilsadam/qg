@@ -5,13 +5,13 @@ import numpy as np
 
 from tqdm import tqdm
 from qg.solver.opt.basis import _state, to_spectral, to_physical
-from qg.solver.integrator.imex import CN2, AB2
 
 import qg.config as vc
 
 from qg.solver.grid.cartesian import CartesianGrid
 from qg.solver.opt.derivative import Derivative
 from qg.solver.opt.operator import ImplicitLinearOperator, define_explicit_operator
+from qg.solver.integrator import Integrator
 
 from qg.solver.opt.operator.jacobian import advection_uv
 
@@ -44,36 +44,46 @@ class QG():
                                         args=(param.time.dt, self.grid, self.derivative, param.pde),
                                         sources=explicit_sources) 
         
+        self.flow = param.flow # puv bc
+        
+        self.int = Integrator(param.integrator)
+        
         self.dt = param.time.dt
         
+        # Select step implementation based on split_bc at init time
+        if param.integrator.split_bc:
+            step_impl = self._step_with_split
+        else:
+            step_impl = self._step_without_split
+        
         try:
-            self.step = torch.compile(self._step)
+            self.step = torch.compile(step_impl)
         except Exception as e:
             self.logger.warn(f"Failed to compile stepper with exception {e}")
-            self.step = self._step
+            self.step = step_impl
         
         self.logger.info(f"Initialized QG model with {self.grid.Nx}x{self.grid.Ny} grid on {self.grid.device}")
 
-    def _step(self, state):
-        # state.dt = self.dt # Not sure if this is necessary, need to think about adaptive time stepping TODO
+    def _step_with_split(self, state):
+        state.qh = self.int.ex(state.qh, state, state.dt, self.operator.split_source)
+        state.qh = self.int.imex(state.qh, state, state.dt, self.operator.source, self.implicit_linear_operator)
+        state.update_t()
 
-        # vorticity step
-        explicit_source = AB2(self.operator.source(state)) # source term
-        state.qh = CN2(state.qh, explicit_source, state.dt, self.implicit_linear_operator) # Crank-Nicolson        
-        
+    def _step_without_split(self, state):
+        state.qh = self.int.imex(state.qh, state, state.dt, self.operator.source, self.implicit_linear_operator)
+        state.update_t()
+   
         # potential flow velocity step
         # state.x_adv, state.y_adv = advection_uv(self.operator, state)
         
         # print(torch.max(to_physical(explicit_source)), torch.min(to_physical(explicit_source)))
         # print(torch.max(to_physical(state.qh)), torch.min(to_physical(state.qh)))
         
-        # update fields
-        state.update_uv()
         # state.update_potential_flow() # also potential_flow
-        state.update_t()
+        # state.dt = self.dt # Not sure if this is necessary, need to think about adaptive time stepping TODO
 
     def init(self):  
-        return _state(self.param.ic(self.grid, self.derivative), self.dt, self.derivative) # In spectral space
+        return _state(self.param.ic(self.grid, self.derivative), self.dt, self.flow, self.derivative) # In spectral space
           
     def _run(self, prof=None, nan_check=False, lim_check=-1):
         save_rate = self.param.time.save_rate

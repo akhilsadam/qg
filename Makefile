@@ -36,6 +36,24 @@ test-generate: install
 		qg.ic.n_batch=1 \
 		wandb.mode=offline
 
+test-generate-free: install
+	python -m qg.train \
+		scenario=smooth_cylinder \
+		qg.grid.Nx=128 \
+		qg.grid.Ny=128 \
+		qg.time.T=12 \
+		qg.ic.n_batch=1 \
+		wandb.mode=offline
+
+test-generate-split: install
+	python -m qg.train \
+		scenario=flow_past_cylinder \
+		qg.grid.Nx=128 \
+		qg.grid.Ny=128 \
+		qg.ic.n_batch=1 \
+		qg.integrator.split_bc=True \
+		wandb.mode=offline
+
 # Clean output
 clean:
 	rm -rf runs/

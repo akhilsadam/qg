@@ -37,3 +37,7 @@ qg:
     function: const-outlet-vorticity-rtd
     width: 0.1
     sponge: 4.0
+
+  flow:
+    function: const-x-flow
+    inlet_velocity: 1.0

@@ -10,31 +10,32 @@ qg:
     precision: float32
 
   time:
-    dt: 0.0005
-    T: 120
+    dt: 0.001 #05
+    T: 24
     save_rate: 500
 
   pde:
-    nu: 1.025e-5  #0.005  # RE 200
-    mu: 0.0
-    B: 0.0
-    nv: 1
+    nu: 5e-3 #1.025e-5 # RE 200
     penalty: 1.25  # Brinkman penalty for obstacle
 
   ic:
     function: randn
-    energy: 0.0005
-    wavenumbers: [1.0, 3.0]
-    n_batch: 1
+    energy: 0
 
   forcing: null
 
-  # mask:
-  #   function: fpc  # Flow past cylinder
-  #   r: 0.7853981633974483  # pi/4
+  mask:
+    function: circular
+    r: 0.628318530717959  # pi/5
+    x_center: 0.25  # Position cylinder at 1/4 domain
+    y_center: 0.5
+    tol: 1e-3
 
   bc:
     function: const-outlet-vorticity-r
     width: 0.1
-    sponge: 1.25
+    sponge: 3.25
+
+  flow:
+    function: const-x-flow
     inlet_velocity: 1.0

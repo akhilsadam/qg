@@ -1,7 +1,7 @@
 from qg.solver.util import _Math
 
 from qg.solver.opt.operator.jacobian import jacobian_pq
-from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty
+from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty, brinkman_friction_slip_w_pot_penalty
 from qg.solver.opt.operator.vortex import vortex_stretching
 # from qg.solver.opt.operator.pde_rpn import compile_pde_rpn
 from qg.solver.opt.operator.rpn import compile_pde_rpn
@@ -16,13 +16,19 @@ def _compile_custom_pde_if_present(params, derivative):
 
 def define_explicit_operator(param, grid, derivative, logger, args, sources, **kwargs):
     patches = []
+    split_patches = []
+    
     compiled_pde = _compile_custom_pde_if_present(param.pde, derivative)
 
     if compiled_pde is not None:
         logger.info(f"Using custom PDE RPN: {' '.join(compiled_pde.tokens)}")
     
     if param.bc is not None:
-        patches.append(lambda op, state: param.bc(state, grid, derivative))
+        bc = lambda op, state: param.bc(state, grid, derivative)
+        if param.integrator.split_bc:
+            split_patches.append(bc)
+        else:
+            patches.append(bc)
     
     if param.forcing is not None:
         logger.info(f"Forced turbulence")
@@ -32,7 +38,7 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
         
         if param.pde.friction is not None:
             logger.info("Using Brinkman penalty (friction-slip) operator")
-            brinkman_penalty = brinkman_friction_slip_penalty
+            brinkman_penalty = brinkman_friction_slip_w_pot_penalty
         else:
             logger.info("Using Brinkman penalty (no-slip) operator")
             brinkman_penalty = brinkman_no_slip_penalty
@@ -51,11 +57,15 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
             patches.append(lambda op, state: compiled_pde.nonlinear_source(state))
     else:
         patches.append(jacobian_pq)
+
+    if param.integrator.split_bc and len(split_patches)==0:
+        logger.warn('No boundary condition or operators to split; ignoring split_bc')
+        param.integrator.split_bc = False
             
-    return Operator(*args, patch_list=patches)
+    return Operator(*args, patch_list=patches, split_patch_list=split_patches)
         
 class Operator:
-    def __init__(self, dt, grid, derivative, params, patch_list = []):        
+    def __init__(self, dt, grid, derivative, params, patch_list = [], split_patch_list = []):        
         self.dt = dt
         self.grid = grid
         self.derivative = derivative
@@ -63,9 +73,13 @@ class Operator:
         self.device = grid.device
 
         self.patch_list = [*patch_list]
+        self.split_patch_list = split_patch_list
         
     def source(self, state):
         return self.derivative.dealias(sum([f(self, state) for f in self.patch_list]))
+    
+    def split_source(self, state):
+        return self.derivative.dealias(sum([f(self, state) for f in self.split_patch_list]))
       
     def __repr__(self):
         return (f"Operator: device={self.device}")  

@@ -8,6 +8,10 @@ You may need an appropriate version of FFMPEG, and sufficiently up-to-date Linux
 
 ## Changelog [`package-variant`]:
 
+### 0.2.3 (2026-06-27)
+- Refactored boundary conditions, integrator, and added operator splitting.
+- Check default configs to see what needs updating
+
 ### 0.2.1 (2026-02-18)
 - Refactored derivative, grid, and input code
 - Made space for Zeitlin-style sine derivatives
