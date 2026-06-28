@@ -39,9 +39,18 @@ test-generate: install
 test-generate-free: install
 	python -m qg.train \
 		scenario=smooth_cylinder \
-		qg.grid.Nx=128 \
-		qg.grid.Ny=128 \
-		qg.time.T=12 \
+		qg.ic.n_batch=1 \
+		wandb.mode=offline
+
+test-generate-dipole: install
+	python -m qg.train \
+		scenario=dipole \
+		qg.ic.n_batch=1 \
+		wandb.mode=offline
+
+test-generate-box: install
+	python -m qg.train \
+		scenario=box \
 		qg.ic.n_batch=1 \
 		wandb.mode=offline
 

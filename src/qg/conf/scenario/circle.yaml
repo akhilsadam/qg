@@ -30,7 +30,6 @@ qg:
     r: 0.628318530717959  # pi/5
     x_center: 0.25  # Position cylinder at 1/4 domain
     y_center: 0.5
-    tol: 1e-3
   
   forcing:
     function: unscaled_cosine

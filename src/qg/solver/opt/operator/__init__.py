@@ -38,7 +38,7 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
         
         if param.pde.friction is not None:
             logger.info("Using Brinkman penalty (friction-slip) operator")
-            brinkman_penalty = brinkman_friction_slip_w_pot_penalty
+            brinkman_penalty = brinkman_friction_slip_penalty
         else:
             logger.info("Using Brinkman penalty (no-slip) operator")
             brinkman_penalty = brinkman_no_slip_penalty

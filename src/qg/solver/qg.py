@@ -56,11 +56,11 @@ class QG():
         else:
             step_impl = self._step_without_split
         
-        try:
-            self.step = torch.compile(step_impl)
-        except Exception as e:
-            self.logger.warn(f"Failed to compile stepper with exception {e}")
-            self.step = step_impl
+        # try:
+        #     self.step = torch.compile(step_impl)
+        # except Exception as e:
+        #     self.logger.warn(f"Failed to compile stepper with exception {e}")
+        self.step = step_impl
         
         self.logger.info(f"Initialized QG model with {self.grid.Nx}x{self.grid.Ny} grid on {self.grid.device}")
 

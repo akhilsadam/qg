@@ -33,6 +33,10 @@ class Derivative:
         self.k_cut = math.sqrt(2) * (1 - dealias_factor) * min(self.mky.max(), self.mkx.max())
         self.alias_mask = (torch.sqrt(self.mksq) > self.k_cut)
         
+        # gaussian smoothing
+        sigma = 2 # in pixels
+        self.blur = torch.exp(-0.5 * (sigma * grid.dx) ** 2 * self.mksq)
+        
     def dealias(self, y):
         """
         Apply dealiasing to the field based on the ratio (usually 1/3 rule).
@@ -71,6 +75,7 @@ class Derivative:
         self.laplacian = self.laplacian.to(device)
         self.inv_laplacian = self.inv_laplacian.to(device)
         self.alias_mask = self.alias_mask.to(device)
+        self.blur = self.blur.to(device)
         return self
 
     def __repr__(self):

@@ -3,14 +3,24 @@ import numpy as np
 from PIL import Image
 import os
 
+# TODO add subpixel rendering / anti-aliasing to non-SDF methods
 
 def add_margin(pil_img, width, height, top, left, color):
     result = Image.new(pil_img.mode, (width, height), color)
     result.paste(pil_img, (left, top))
     return result
 
+def sdf_raster(d, r, tolerance):
+    # mask = torch.zeros_like(d)
+    # mask[d < r] = 1  # Inside the circle
+    # mask[torch.abs(d - r) < tolerance] = 0.5  # Boundary (within tolerance)
+    
+    mask = torch.clamp((r - d) / tolerance, -0.5, 0.5) + 0.5
+    
+    return mask
+
 def circular(grid, derivative, # add state as first argument if time-dependent
-             r, tolerance=1e-3, invert=False,
+             r, tolerance=1, invert=False,
              **kwargs):
     # Use grid object for domain size and number of grid points
     Lx = grid.Lx
@@ -30,18 +40,43 @@ def circular(grid, derivative, # add state as first argument if time-dependent
     distance = torch.sqrt((x[None,:] - x_center)**2 + (y[:,None] - y_center)**2) # yx
 
     # Create the mask: inside the circle (distance < r) is 1
-    mask = torch.zeros_like(distance)
-    mask[distance < r] = 1  # Inside the circle
-    mask[torch.abs(distance - r) < tolerance] = 0.5  # Boundary (within tolerance)
+    mask = sdf_raster(distance, r, tolerance * max(Lx/Nx, Ly/Ny))
     
     if invert:
         mask = 1 - mask
     
     return mask[None,:,:]  # Add batch dimension
 
+def box(grid, derivative, # add state as first argument if time-dependent
+             r, tolerance=1, invert=False,
+             **kwargs):
+    # Use grid object for domain size and number of grid points
+    Lx = grid.Lx
+    Ly = grid.Ly
+    Nx = grid.Nx
+    Ny = grid.Ny
+
+    # Create a grid of coordinates (x, y)
+    x = torch.linspace(0, Lx, Nx, device = grid.device)
+    y = torch.linspace(0, Ly, Ny, device = grid.device)
+
+    # Find the center of the domain
+    x_center = Lx / 2
+    y_center = Ly / 2
+
+    # Compute the distance of each point from the center
+    distance = torch.max(torch.abs(x[None,:] - x_center), torch.abs(y[:,None] - y_center)) # yx
+
+    # Create the mask: inside the circle (distance < r) is 1
+    mask = sdf_raster(distance, r, tolerance * max(Lx/Nx, Ly/Ny))
+    
+    if invert:
+        mask = 1 - mask
+    
+    return mask[None,:,:]  # Add batch dimension
 
 def fpc(grid, derivative, # add state as first argument if time-dependent
-             tolerance=1e-3,
+             tolerance=1,
              **kwargs):
     # Use grid object for domain size and number of grid points
     Lx = grid.Lx
@@ -62,13 +97,11 @@ def fpc(grid, derivative, # add state as first argument if time-dependent
     distance = torch.sqrt((x[None,:] - x_center)**2 + (y[:,None] - y_center)**2) # yx
 
     # Create the mask: inside the circle (distance < r) is 1
-    mask = torch.zeros_like(distance)
-    mask[distance < r] = 1  # Inside the circle
-    mask[torch.abs(distance - r) < tolerance] = 0.5  # Boundary (within tolerance)
-    
+    mask = sdf_raster(distance, r, tolerance * max(Lx/Nx, Ly/Ny))
+
     return mask[None,:,:]  # Add batch dimension
 
-def cape(grid, derivative, height=1/4, sigma=1/16, tolerance=1e-2, pad=0.24, **kwargs):
+def cape(grid, derivative, height=1/4, sigma=1/16, tolerance=1, pad=0.24, **kwargs):
     # Use grid object for domain size and number of grid points
     Nx = grid.Nx
     Ny = grid.Ny
@@ -86,9 +119,7 @@ def cape(grid, derivative, height=1/4, sigma=1/16, tolerance=1e-2, pad=0.24, **k
     cape = (cape_profile > 0) \
         * (y > y_center - 1/8)
 
-    mask = torch.zeros_like(cape_profile)
-    mask[cape > 0] = 1  # Inside the circle
-    mask[torch.abs(cape_profile) < tolerance] = 0.5 
+    mask = sdf_raster(-1 * cape, 0, tolerance * max(Lx/Nx, Ly/Ny))
     
     return mask[None,:,:]  # Add batch dimension
 
@@ -192,6 +223,7 @@ mask_library = {
     'fpc': fpc,
     'cape': cape,
     'circular': circular,
+    'box' : box,
     'image': im,
     'netCDF': nc,
 }
