@@ -10,12 +10,12 @@ qg:
 
   time:
     dt: 0.001 # 0.0005
-    T: 120
+    T: 240
     save_rate: 200 # 1024
   
   pde:
     nu: 5e-4
-    friction: 1.0
+    friction: 0.0
     penalty: 1.25
   
   ic:
