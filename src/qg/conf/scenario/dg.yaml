@@ -32,10 +32,10 @@ qg:
   forcing:
     function: unscaled_cosine
     A: -0.1
-    B: 2
+    B: 0.5
     C: 0
     D: 0.1
-    E: 2
+    E: 0.5
     F: 0
   #   function: local_cosines
   #   A: [-0.15, 0.15]
