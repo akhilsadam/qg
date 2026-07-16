@@ -11,3 +11,5 @@ quasigeostrophic_flow.egg-info/
 .pytest_cache
 **.nc
 **.npy
+tests/
+normal_test.png

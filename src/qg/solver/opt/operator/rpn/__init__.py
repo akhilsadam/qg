@@ -34,52 +34,14 @@ All modules are designed for ``torch`` tensors and GPU acceleration.
 """
 
 from .compiler import RPNCompiler
-from .embeddings import (
-    VOCAB_SIZE,
-    SCALAR_TOKEN_ID,
-    TOKEN_TO_ID,
-    ID_TO_TOKEN,
-    TOKEN_TO_CAT,
-    normalize_token,
-    batch_tokenize_rpn,
-)
-from .algebra import create_composite_ruleset
-from .contrastive import ContrastiveRPN
-from .qwen_contrastive import QwenContrastiveRPN
-
-from .generator import RPNGenerator, create_vocab_from_embeddings
-
 
 def compile_pde_rpn(rpn, derivative, pde_params):
     """Legacy alias for backwards compatibility."""
     return RPNCompiler(derivative, pde_params).compile(rpn)
-
-def batch_rpn_gen(batch_size, max_depth=25, max_nodes=50):
-    vocab = create_vocab_from_embeddings()
-    gen = RPNGenerator(vocab, max_depth=max_depth, max_nodes=max_nodes)
-    return gen.generate_batch(batch_size)
- 
-
 
 # Re-export for cleaner API
 __all__ = [
     # Compiler
     "RPNCompiler",
     "compile_pde_rpn",
-    # Embedding vocabulary
-    "VOCAB_SIZE",
-    "SCALAR_TOKEN_ID",
-    "TOKEN_TO_ID",
-    "ID_TO_TOKEN",
-    "TOKEN_TO_CAT",
-    "normalize_token",
-    "batch_tokenize_rpn",
-    # Algebra rules
-    "create_composite_ruleset",
-    # Contrastive learning
-    "ContrastiveRPN",
-    # Generator
-    "RPNGenerator",
-    "create_vocab_from_embeddings",
-    "batch_rpn_gen"
 ]

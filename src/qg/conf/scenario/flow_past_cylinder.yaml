@@ -11,7 +11,7 @@ qg:
 
   time:
     dt: 0.001 #05
-    T: 24
+    T: 72
     save_rate: 500
 
   pde:

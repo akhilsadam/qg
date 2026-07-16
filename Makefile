@@ -48,6 +48,12 @@ test-generate-dipole: install
 		qg.ic.n_batch=1 \
 		wandb.mode=offline
 
+test-generate-dg: install
+	python -m qg.train \
+		scenario=dg \
+		qg.ic.n_batch=1 \
+		wandb.mode=offline
+
 test-generate-box: install
 	python -m qg.train \
 		scenario=box \
@@ -61,6 +67,17 @@ test-generate-split: install
 		qg.grid.Ny=128 \
 		qg.ic.n_batch=1 \
 		qg.integrator.split_bc=True \
+		wandb.mode=offline
+
+test-rpn:
+	pytest tests/test_rpn_compiler_comprehensive.py
+	python -m qg.train \
+		scenario=forced_turbulence \
+		qg.grid.Nx=128 \
+		qg.grid.Ny=128 \
+		qg.ic.n_batch=1 \
+		qg.time.T=10 \
+		qg.pde.rpn='q psi jacobian neg 4.3 * 0.3 dx +' \
 		wandb.mode=offline
 
 # Clean output

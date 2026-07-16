@@ -10,7 +10,7 @@ qg:
 
   time:
     dt: 0.001 # 0.0005
-    T: 60
+    T: 120
     save_rate: 200 # 1024
   
   pde:
@@ -20,21 +20,30 @@ qg:
   
   ic:
     function: randn
-    energy: 0.01 #5
+    energy: 0.0 #5
     wavenumbers: [3.0, 5.0]
   
   mask:
-    function: box
+    function: circular
     r: 6  # pi/5
+    x_center: 0.25  # Position cylinder at 1/4 domain
+    y_center: 0.5
     invert: true
     tolerance: 1
 
   forcing:
-    function: local_cosines
-    A: [-0.15, 0.15]
-    kx: [1.0, 1.0]
-    ky: [1.0, 1.0]
-    cx: [0.4, 0.6]
-    cy: [0.5, 0.5]
-    w: 0.0
-    sigma: [0.04, 0.04]
+    function: unscaled_cosine
+    A: -0.1
+    B: 2
+    C: 0
+    D: 0.1
+    E: 2
+    F: 0
+  #   function: local_cosines
+  #   A: [-0.15, 0.15]
+  #   kx: [1.0, 1.0]
+  #   ky: [1.0, 1.0]
+  #   cx: [0.4, 0.6]
+  #   cy: [0.5, 0.5]
+  #   w: 0.0
+  #   sigma: [0.04, 0.04]

@@ -44,6 +44,8 @@ class Derivative:
         """
         if isinstance(y, (tuple, list)):
             return tuple(self.dealias(v) for v in y)
+        if not isinstance(y, torch.Tensor):
+            return y
         # Apply dealiasing: set high-frequency components to zero
         y[self.alias_mask.expand_as(y)] = 0
         return y

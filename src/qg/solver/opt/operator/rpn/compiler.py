@@ -156,7 +156,7 @@ class ExprBuilder:
                     av = av.unsqueeze(0)
                 if isinstance(bv, torch.Tensor) and bv.dim() == 2:
                     bv = bv.unsqueeze(0)
-                return torch.add(av, bv, alpha=-1) # avoids add_kernel on complex<float>
+                return torch.add(av, bv, alpha=-1)  # avoids add_kernel on complex<float>
         else:
             eval_fn = lambda state: a.eval_fn(state) + -1.0 * b.eval_fn(state)
 
@@ -188,6 +188,10 @@ class ExprBuilder:
             def eval_fn(state):
                 av = ExprBuilder._to_physical_safe(a.eval_fn(state), a.in_physical_domain)
                 bv = ExprBuilder._to_physical_safe(b.eval_fn(state), b.in_physical_domain)
+                if isinstance(av, torch.Tensor) and av.dim() == 2:
+                    av = av.unsqueeze(0)
+                if isinstance(bv, torch.Tensor) and bv.dim() == 2:
+                    bv = bv.unsqueeze(0)
                 return av * bv
         else:
             eval_fn = lambda state: a.eval_fn(state) * b.eval_fn(state)
@@ -216,14 +220,26 @@ class ExprBuilder:
 
     @staticmethod
     def apply_linear(expr: _Expr, op_multiplier, op_name: str) -> _Expr:
-
         if not expr.depends_on_state:
             raw = expr.eval_fn(None)
             if not isinstance(raw, torch.Tensor):
                 raw = torch.tensor(float(raw))
             field_h = to_spectral(raw) if expr.in_physical_domain else raw
             result_h = op_multiplier * field_h
-            return ExprBuilder.const_field(result_h, in_physical_domain=False)
+            # Constants (scalar values without state dependence) applied with a linear operator
+            # produce zero, since a constant field has no spatial variation.
+            # NaN can result from 0 * inf operations, so we explicitly zero out the result.
+            result_h = torch.nan_to_num(result_h, nan=0.0, posinf=0.0, neginf=0.0)
+            # Return as expression with const_value=0.0 (to trigger nonlinear_source)
+            # eval_fn returns scalar 0.0 to avoid shape mismatches in dealias
+            return _Expr(
+                eval_fn=lambda state: 0.0,
+                depends_on_state=False,
+                const_value=0.0,  # Triggers nonlinear_source creation
+                linear_multiplier=None,
+                terms=[_TermMeta(state_factor_count=0, linear_multiplier=None, scalar_value=0.0)],
+                in_physical_domain=False,
+            )
 
         lin = op_multiplier * expr.linear_multiplier if expr.linear_multiplier is not None else None
         terms = [
@@ -321,21 +337,17 @@ class ExprBuilder:
 
     @staticmethod
     def _cross_terms_add(a_terms, b_terms, sign: int) -> list:
-        terms = []
-        for ta in a_terms:
-            for tb in b_terms:
-                lin = None
-                if ta.linear_multiplier is not None and tb.linear_multiplier is not None:
-                    lin = ta.linear_multiplier * tb.linear_multiplier
-                elif ta.linear_multiplier is not None and tb.scalar_value is not None:
-                    lin = ta.linear_multiplier * tb.scalar_value
-                elif tb.linear_multiplier is not None and ta.scalar_value is not None:
-                    lin = sign * tb.linear_multiplier * ta.scalar_value
-                terms.append(_TermMeta(
-                    state_factor_count=ta.state_factor_count + tb.state_factor_count,
-                    linear_multiplier=lin,
-                    scalar_value=None,
-                ))
+        # Addition chains terms linearly into a pooled collection.
+        # It does NOT compute a Cartesian product cross-combination.
+        terms = list(a_terms)
+        for tb in b_terms:
+            lin = sign * tb.linear_multiplier if tb.linear_multiplier is not None else None
+            sc  = sign * tb.scalar_value if tb.scalar_value is not None else None
+            terms.append(_TermMeta(
+                state_factor_count=tb.state_factor_count,
+                linear_multiplier=lin,
+                scalar_value=sc,
+            ))
         return terms
 
     @staticmethod
@@ -370,16 +382,15 @@ class OperatorRegistry:
 
     # Stable nonlinear unary operators only.
     NONLINEAR_UNARY: dict = {
-        "sqrt":   torch.sqrt,
+        "sqrt":   lambda x: torch.sqrt(torch.relu(x)),
         "cos":    torch.cos,
         "sin":    torch.sin,
         "cosh":   torch.cosh,
         "sinh":   torch.sinh,
         "tanh":   torch.tanh,
-        "exp":    torch.exp,
+        "exp":    lambda x: torch.exp(torch.clamp(x, max=100.0)),
         "square": lambda x: x ** 2,
         "cube":   lambda x: x ** 3,
-        # "abs":    torch.abs,
     }
 
     def __init__(self, derivative):
@@ -531,7 +542,6 @@ class RPNCompiler:
             func = self.ops.get_nonlinear_unary(lower)
             if _is_vec(a):
                 if not a.x.depends_on_state and not a.y.depends_on_state:
-                    # Constant vector field — precompute each component.
                     rx = func(ExprBuilder._to_physical_safe(a.x.eval_fn(None), a.x.in_physical_domain))
                     ry = func(ExprBuilder._to_physical_safe(a.y.eval_fn(None), a.y.in_physical_domain))
                     stack.append(_VecExpr(
@@ -541,16 +551,13 @@ class RPNCompiler:
                     return
             else:
                 if not a.depends_on_state:
-                    # Constant scalar or field — precompute eagerly.
                     raw = ExprBuilder._to_physical_safe(a.eval_fn(None), a.in_physical_domain)
                     if not isinstance(raw, torch.Tensor):
                         raw = torch.tensor(float(raw))
                     result = func(raw)
                     if isinstance(result, torch.Tensor) and result.dim() == 0:
-                        # True scalar result (e.g. sin(3)) — wrap as plain const.
                         stack.append(ExprBuilder.const(result.item()))
                     else:
-                        # Tensor field result (e.g. sin(x)) — wrap as const_field.
                         stack.append(ExprBuilder.const_field(result, in_physical_domain=True))
                     return
             stack.append(ExprBuilder.vec_apply_nonlinear(a, func, lower))
@@ -582,6 +589,7 @@ class RPNCompiler:
             const_value=-1.0 * a.const_value if a.const_value is not None else None,
             linear_multiplier=-1.0 * a.linear_multiplier if a.linear_multiplier is not None else None,
             terms=ExprBuilder.negate_terms(a.terms),
+            in_physical_domain=False
         ))
 
     def _handle_dealias(self, token: str, stack: list) -> None:
@@ -591,15 +599,21 @@ class RPNCompiler:
         def _dealias_scalar(s: _Expr) -> _Expr:
             return _Expr(
                 eval_fn=lambda state, _s=s: d.dealias(
-                    (to_spectral(_s.eval_fn(state)) if _s.in_physical_domain else _s.eval_fn(state)).clone()
+                    to_spectral(_s.eval_fn(state)) if _s.in_physical_domain else _s.eval_fn(state)
                 ),
                 depends_on_state=s.depends_on_state,
                 const_value=None,
-                linear_multiplier=(d.dealias(s.linear_multiplier.clone()) if s.linear_multiplier is not None else None),
+                linear_multiplier=(
+                    d.dealias(s.linear_multiplier.clone()) if isinstance(s.linear_multiplier, torch.Tensor)
+                    else s.linear_multiplier
+                ),
                 terms=[
                     _TermMeta(
                         state_factor_count=t.state_factor_count,
-                        linear_multiplier=(d.dealias(t.linear_multiplier.clone()) if t.linear_multiplier is not None else None),
+                        linear_multiplier=(
+                            d.dealias(t.linear_multiplier.clone()) if isinstance(t.linear_multiplier, torch.Tensor)
+                            else t.linear_multiplier
+                        ),
                         scalar_value=None,
                     )
                     for t in s.terms
@@ -646,15 +660,31 @@ class RPNCompiler:
         b, a = self._pop(stack, token, n=2)
         if not _is_vec(a) or not _is_vec(b):
             raise ValueError(f"RPN type error: '{token}' expects two vectors")
+
+        def _dot_eval(state, _a=a, _b=b):
+            av_x = to_physical(_a.x.eval_fn(state))
+            av_y = to_physical(_a.y.eval_fn(state))
+            bv_x = to_physical(_b.x.eval_fn(state))
+            bv_y = to_physical(_b.y.eval_fn(state))
+
+            # Convert scalars to tensors
+            if not isinstance(av_x, torch.Tensor):
+                av_x = torch.tensor(float(av_x))
+            if not isinstance(av_y, torch.Tensor):
+                av_y = torch.tensor(float(av_y))
+            if not isinstance(bv_x, torch.Tensor):
+                bv_x = torch.tensor(float(bv_x))
+            if not isinstance(bv_y, torch.Tensor):
+                bv_y = torch.tensor(float(bv_y))
+
+            return av_x * bv_x + av_y * bv_y
+
         stack.append(_Expr(
-            eval_fn=lambda state: (
-                to_physical(a.x.eval_fn(state)) * to_physical(b.x.eval_fn(state))
-                + to_physical(a.y.eval_fn(state)) * to_physical(b.y.eval_fn(state))
-            ),
+            eval_fn=_dot_eval,
             depends_on_state=True,
             const_value=None,
             linear_multiplier=None,
-            terms=[_TermMeta(0, None, None)],
+            terms=[_TermMeta(2, None, None)],
             in_physical_domain=True,
         ))
 
@@ -683,7 +713,7 @@ class RPNCompiler:
         linear_operator = None
         if not expr.in_physical_domain:
             for term in expr.terms:
-                if term.state_factor_count <= 1 and term.linear_multiplier is not None:
+                if term.state_factor_count == 1 and term.linear_multiplier is not None:
                     linear_operator = (
                         term.linear_multiplier if linear_operator is None
                         else linear_operator + term.linear_multiplier
@@ -701,7 +731,8 @@ class RPNCompiler:
                     rhs = float(rhs) * torch.ones_like(state.qh)
                 if _lin is not None:
                     rhs = rhs + (-1.0) * _lin * state.qh
-                return d.dealias(rhs)
+                rhs = d.dealias(rhs)
+                return torch.nan_to_num(rhs, nan=0.0, posinf=0.0, neginf=0.0)
 
             nonlinear_source = _rhs
 
@@ -714,7 +745,6 @@ class RPNCompiler:
     def _jacobian(self, a_h, b_h, a_physical: bool = False, b_physical: bool = False) -> torch.Tensor:
         d = self.derivative
 
-        # Promote plain scalars to a spectral field of the right shape
         if not isinstance(a_h, torch.Tensor):
             a_h = float(a_h) * torch.ones_like(d.laplacian).unsqueeze(0)
             a_physical = False
@@ -727,7 +757,6 @@ class RPNCompiler:
         if b_physical:
             b_h = to_spectral(b_h)
 
-        # Ensure batch dim
         if a_h.dim() == 2:
             a_h = a_h.unsqueeze(0)
         if b_h.dim() == 2:
@@ -745,7 +774,7 @@ class RPNCompiler:
             raise ValueError(f"RPN parse error: '{token}' needs {n} operand{'s' if n > 1 else ''}")
         if n == 1:
             return stack.pop()
-        return stack.pop(), stack.pop()
+        return (stack.pop(), stack.pop())
 
     @staticmethod
     def _extract_scalar_constants(pde_params) -> dict:

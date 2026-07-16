@@ -42,7 +42,7 @@ def compute_normal_vectors(op, mask):
     
     # from matplotlib import pyplot as plt
     # plt.figure(figsize=(10,10))
-    # plt.imshow(torch.stack([grad_x,grad_y,mask], dim=-1).squeeze().detach().cpu().numpy())
+    # plt.imshow(torch.stack([grad_x*0,grad_y*0,mask], dim=-1).squeeze().detach().cpu().numpy())
     # plt.savefig("normal_test.png")
     # exit()
     
