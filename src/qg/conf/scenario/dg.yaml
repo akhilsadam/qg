@@ -15,7 +15,7 @@ qg:
   
   pde:
     nu: 5e-4
-    friction: 0.0
+    friction: 1.0
     penalty: 1.25
   
   ic:
