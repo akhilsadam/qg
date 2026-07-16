@@ -24,10 +24,8 @@ qg:
     wavenumbers: [3.0, 5.0]
   
   mask:
-    function: circular
+    function: box
     r: 6  # pi/5
-    x_center: 0.25  # Position cylinder at 1/4 domain
-    y_center: 0.5
     invert: true
     tolerance: 1
 
