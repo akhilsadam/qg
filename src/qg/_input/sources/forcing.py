@@ -4,15 +4,15 @@ from qg.solver.opt.basis import to_physical, to_spectral
 
 # Generates forcing based on specified wavenumber and time effects
 def unscaled_cosine(state, grid, derivative, 
-                    A=0.0, B=0.0, C=0.0, D=0.0, E=0.0, F=0.0,
+                    A=0.0, B=0.0, C=0.0, D=0.0, E=0.0, F=0.0, G=0.0, H=0.0,
                     **kwargs):
     # grid of coordinates (x, y)
     x = torch.linspace(0, grid.Lx, grid.Nx,device=grid.device)
     y = torch.linspace(0, grid.Ly, grid.Ny,device=grid.device)
     X, Y = x[None,:],y[:,None] # meshgrid for x, y
     
-    w = A * (torch.cos(B * X + C * state.t)) \
-        + D * (torch.cos(E * Y + F * state.t)) [None,:,:]
+    w = A * (torch.cos(B * X + C * state.t + G)) \
+        + D * (torch.cos(E * Y + F * state.t + H)) [None,:,:]
     
     wh = to_spectral(w)
     return wh

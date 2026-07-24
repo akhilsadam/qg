@@ -143,15 +143,24 @@ def brinkman_friction_slip_penalty(op, state, chi, chi_velocity):
     dut = (du - dun) # tangentials
     dvt = (dv - dvn)
 
-    u_chi = boundary * dun + (interior * dun + chi * dut) * friction # products to be damped
+    u_chi = boundary * dun + (interior * dun + chi * dut) * friction # products to be damped for no through flow
     v_chi = boundary * dvn + (interior * dun + chi * dvt) * friction
-    # q_chi = interior * (q)
+
+    # to be damped for no tangential stress
+    ut_h = to_spectral(tdot)
+    dx_ut = to_physical(op.derivative.dx * ut_h)
+    dy_ut = to_physical(op.derivative.dy * ut_h)
+    tan_stress = to_spectral(normal_x * dx_ut + normal_y * dy_ut) * friction
+
+
 
     u_chi_h = to_spectral(u_chi)
     v_chi_h = to_spectral(v_chi)
     # q_chi_h = to_spectral(q_chi)
     
-    sponge = (-1 * op.derivative.dx * v_chi_h + op.derivative.dy * u_chi_h ) / eta # - d/dx(chi*v) + d/dy(chi*u) # surface sponge
+    # sponge = (-1 * op.derivative.dx * v_chi_h + op.derivative.dy * u_chi_h ) / eta # - d/dx(chi*v) + d/dy(chi*u) # surface sponge
+
+    sponge = - tan_stress / eta
     # - q_chi_h
     return sponge
 
