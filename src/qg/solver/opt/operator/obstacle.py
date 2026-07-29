@@ -87,6 +87,33 @@ def brinkman_no_slip_penalty(op, state, chi, chi_velocity):
     
     return sponge
 
+def brinkman_free_slip_penalty(op, state, chi, chi_velocity=(0.0, 0.0)):
+    """
+    True free-slip (frictionless) volume penalization for axis-aligned walls.
+    Same signature as brinkman_no_slip_penalty, but damps ONLY the wall-normal
+    velocity: for each boundary cell the nearer wall picks the component to kill
+    (u on left/right, v on top/bottom). Tangential is left free. `chi` is the
+    full boundary mask (e.g. `border`); the split comes from grid geometry, so
+    corners mitre along the diagonals.
+    """
+    eta = op.params.penalty * op.dt
+
+    x = torch.linspace(0, op.grid.Lx, op.grid.Nx, device=op.device)[None, :]
+    y = torch.linspace(0, op.grid.Ly, op.grid.Ny, device=op.device)[:, None]
+    vwall = (torch.minimum(x, op.grid.Lx - x)
+             <= torch.minimum(y, op.grid.Ly - y)).to(chi.dtype)   # L/R -> kill u
+    hwall = 1.0 - vwall                                            # T/B -> kill v
+
+    u = to_physical(state.uh)
+    v = to_physical(state.vh)
+
+    u_chi = chi * vwall * (u - chi_velocity[0])
+    v_chi = chi * hwall * (v - chi_velocity[1])
+
+    sponge = (-1 * op.derivative.dx * to_spectral(v_chi)
+              + op.derivative.dy * to_spectral(u_chi)) / eta
+    return sponge
+
 # def brinkman_friction_slip_penalty(op, state, chi, chi_velocity):
 #     eta = op.params.penalty * op.dt
 

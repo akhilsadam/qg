@@ -1,7 +1,7 @@
 from qg.solver.util import _Math
 
 from qg.solver.opt.operator.jacobian import jacobian_pq
-from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty, brinkman_friction_slip_w_pot_penalty
+from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty, brinkman_friction_slip_w_pot_penalty, brinkman_free_slip_penalty
 from qg.solver.opt.operator.vortex import vortex_stretching
 # from qg.solver.opt.operator.pde_rpn import compile_pde_rpn
 from qg.solver.opt.operator.rpn import compile_pde_rpn
@@ -35,14 +35,16 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
         patches.append(lambda op, state: param.forcing(state, grid, derivative))
         
     if param.pde.penalty > 0:
-        
-        if param.pde.friction is not None:
+        if getattr(param.pde, 'free_slip', False):
+            logger.info("Using modified Brinkman penalty (true free-slip) operator")
+            brinkman_penalty = brinkman_free_slip_penalty
+        elif param.pde.friction is not None:
             logger.info("Using Brinkman penalty (friction-slip) operator")
             brinkman_penalty = brinkman_friction_slip_penalty
         else:
             logger.info("Using Brinkman penalty (no-slip) operator")
             brinkman_penalty = brinkman_no_slip_penalty
-        
+
         mask = solve_mask(param.mask, grid, derivative)
         patches.append(lambda op, state: brinkman_penalty(op, state, *mask(op, state)))
         

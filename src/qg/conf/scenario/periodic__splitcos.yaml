@@ -1,0 +1,25 @@
+# @package _global_
+# mentor's piecewise cosine forcing, doubly-periodic (no Brinkman, no sponge)
+qg:
+  grid: {Nx: 256, Ny: 256, Lx: 6.283185307179586, Ly: 6.283185307179586, precision: float32}
+  time: {dt: 0.00001, T: 100.0, save_rate: 50000}
+  integrator: {lms: AB2, ex: Euler, imex: CN2, split_bc: false}
+  pde:
+    mu: 0.1
+    nu: 0.005
+    B: 5.0
+    nv: 1.0
+    penalty: 0.0            # no Brinkman
+    friction: null
+    free_slip: false
+    closure_function: null
+    closure: 0.0
+    rossby_radius: null
+    rpn: null
+  ic: {function: randn, energy: 0.0, wavenumbers: [3.0, 5.0], seed: 27, n_batch: 1}
+  mask: null                # no obstacle/wall mask
+  bc: {function: periodic}  # doubly-periodic
+  forcing: {function: split_cosine, A: 1.0}
+  flow: null
+  fps: 20
+  profile: false
