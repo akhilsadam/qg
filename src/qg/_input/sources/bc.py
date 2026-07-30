@@ -178,7 +178,7 @@ class BC:
     def sponge_walls(state, grid, derivative,
                      sides='lrtb', width=0.025, gap=0.025,
                      h_gap_l=False, h_gap_r=False, v_gap_t=False, v_gap_b=False,
-                     sponge=4.0, tolerance=1, **kwargs):
+                     sponge=4.0, tolerance=1, offset=0.0, **kwargs):
         Lx, Ly, Nx, Ny = grid.Lx, grid.Ly, grid.Nx, grid.Ny
         x = torch.linspace(0, Lx, Nx, device=grid.device)[None, :]
         y = torch.linspace(0, Ly, Ny, device=grid.device)[:, None]

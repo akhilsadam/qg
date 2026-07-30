@@ -90,25 +90,11 @@ def box(grid, derivative, # add state as first argument if time-dependent
 
     return mask[None,:,:]  # Add batch dimension
 
-# ===========================================================================
-# Wall / boundary masks for the BC cases.
-#
-# `walls` returns a strip of fractional `width` on the chosen `sides` (any of
-# 'l','r','t','b'). Outer edges run past the domain so the wall is filled up to
-# the boundary; only inner or trimmed edges get the ~1-cell SDF taper. Gap flags
-# trim a strip's *end* by (width+gap), detaching it from the perpendicular wall
-# (opening that corner):
-#     h_gap_l / h_gap_r  trim the left / right end of the top & bottom strips
-#     v_gap_t / v_gap_b  trim the top / bottom end of the left & right strips
-#
-# The five image cases map to these masks (each side is either a Brinkman wall
-# or a sponge region; assign the penalty per mask in the config / operator):
 #     case 1  no-slip all sides        : border
 #     case 2  sponge all sides         : border
 #     case 3  no-slip L/R, sponge T/B  : walls_lr        + walls_tb_gap
 #     case 4  no-slip L, sponge T/R/B  : wall_l          + walls_trb_lgap
 #     case 5  free-slip all sides      : walls_lr (chi_x) + walls_tb (chi_y)
-# ===========================================================================
 def _wall_strips(Lx, Ly, sides, width, gap,
                  h_gap_l=False, h_gap_r=False, v_gap_t=False, v_gap_b=False):
     wx, wy = width * Lx, width * Ly
@@ -124,10 +110,10 @@ def _wall_strips(Lx, Ly, sides, width, gap,
     if 't' in sides: strips.append((hx0,     hx1,     Ly - wy,  Ly + wy))
     return strips
 
-def walls(grid, derivative, # add state as first argument if time-dependent
+def walls(grid, derivative,
           sides='lrtb', width=0.025, gap=0.025,
           h_gap_l=False, h_gap_r=False, v_gap_t=False, v_gap_b=False,
-          tolerance=1, invert=False,
+          tolerance=1, invert=False, smooth=False,
           **kwargs):
     Lx = grid.Lx
     Ly = grid.Ly
@@ -153,10 +139,8 @@ def walls(grid, derivative, # add state as first argument if time-dependent
     if invert:
         mask = 1 - mask
 
-    return mask[None, :, :]  # Add batch dimension
+    return mask[None, :, :]
 
-# --- named presets (thin wrappers over walls, kept >3 params on purpose so
-#     obstacle.solve_mask treats them as static (grid, derivative) masks) ---
 def border(grid, derivative, width=0.025, tolerance=1, invert=False, **kwargs):
     return walls(grid, derivative, sides='lrtb',
                  width=width, tolerance=tolerance, invert=invert)

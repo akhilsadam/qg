@@ -83,7 +83,8 @@ def main(cfg: DictConfig) -> None:
     data = solver.solve(
         save_path=str(output_dir),
         name='qg_data',
-        clamp=cfg.get('clamp', 0.3)
+        clamp=cfg.get('clamp', 0.3),
+        nan_check=True
     )
     
     print(f"✅ QG simulation complete: {data.shape}")

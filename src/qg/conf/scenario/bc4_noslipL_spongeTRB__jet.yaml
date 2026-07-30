@@ -40,7 +40,7 @@ qg:
     n_batch: 1
 
   mask: {function: wall_l, width: 0.025, tolerance: 1}
-
+  
   bc: {function: sponge-walls, sides: trb, h_gap_l: true, width: 0.025, gap: 0.025, sponge: 4.0}
 
   forcing: {function: piecewise, tau0: 1.0}

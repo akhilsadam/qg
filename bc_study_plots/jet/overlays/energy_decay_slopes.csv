@@ -1,0 +1,4 @@
+case,slope_dE_dt,r2,t0,t1
+Case 1: no-slip all,-1.6664e-02,0.430,20.0,85.0
+Case 2: sponge all,-3.2438e-03,0.098,20.0,85.0
+Case 3: no-slip L/R + sponge T/B,-2.1660e-02,0.470,24.5,85.0

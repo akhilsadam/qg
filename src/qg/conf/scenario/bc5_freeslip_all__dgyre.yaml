@@ -26,7 +26,7 @@ qg:
     nv: 1.0
     penalty: 1.25      # eta = penalty * dt ; keep > 1 for explicit stability
     friction: null
-    free_slip: true
+    free_slip: false
     closure_function: null
     closure: 0.0
     rossby_radius: null
@@ -39,10 +39,8 @@ qg:
     seed: 27
     n_batch: 1
 
-  mask: {function: border, width: 0.025, tolerance: 1}
-
-  bc: {function: periodic}
-
+  mask: {function: border, width: 0.025}
+  bc: {function: sponge-walls, sides: lrtb, width: 0.025, offset: 0.05, sponge: 4.0}
   forcing: {function: cosine, A: 0, B: 0, C: 0, D: -1.0, E: 0.5, F: 0}
 
   flow: null

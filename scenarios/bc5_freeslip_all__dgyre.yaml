@@ -21,10 +21,10 @@ qg:
 
   pde:
     mu: 0.1
-    nu: 0.005               # 5e-3
-    B: 5.0                  # beta
+    nu: 0.005
+    B: 5.0
     nv: 1.0
-    penalty: 1.25      # eta = penalty * dt ; keep > 1 for explicit stability
+    penalty: 1.25
     friction: null
     free_slip: true
     closure_function: null
@@ -32,15 +32,14 @@ qg:
     rossby_radius: null
     rpn: null
 
-  ic:                       # start from rest (energy 0), like the working run
+  ic:                       # start from rest (energy 0)
     function: randn
     energy: 0.0
     wavenumbers: [3.0, 5.0]
     seed: 27
     n_batch: 1
 
-  mask: {function: border, width: 0.025, tolerance: 1}
-
+  mask: {function: border, width: 0.025, tolerance: 1} 
   bc: {function: periodic}
 
   forcing: {function: cosine, A: 0, B: 0, C: 0, D: -1.0, E: 0.5, F: 0}

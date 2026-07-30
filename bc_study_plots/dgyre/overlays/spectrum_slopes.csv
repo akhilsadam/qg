@@ -1,0 +1,4 @@
+case,alpha,r2,k_min,k_max
+Case 1: no-slip all,-3.3186,0.993,2.00,108.00
+Case 2: sponge all,-4.3662,0.974,1.00,108.00
+Case 3: no-slip L/R + sponge T/B,-3.3046,0.993,2.00,108.00

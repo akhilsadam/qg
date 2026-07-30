@@ -37,14 +37,12 @@ def local_cosines(state, grid, derivative,
     wh = to_spectral(omega)
     return wh
 
-# ---------------------------------------------------------------------------
 # Separable trig forcing (cosine / sine)
 #
 #   F(x, y, t) = A * trig(B * x + C * t) + D * trig(E * y + F * t)
 #
 #     A: x-term amplitude   B: x wavenumber   C: x temporal frequency
 #     D: y-term amplitude   E: y wavenumber   F: y temporal frequency
-## ---------------------------------------------------------------------------
 def _separable_trig(state, grid, trig, A, B, C, D, E, F):
     x = torch.linspace(0, grid.Lx, grid.Nx, device=grid.device)
     y = torch.linspace(0, grid.Ly, grid.Ny, device=grid.device)
@@ -66,7 +64,6 @@ def sine(state, grid, derivative, # add state as first argument if time-dependen
          **kwargs):
     return _separable_trig(state, grid, torch.sin, A, B, C, D, E, F)
 
-# ---------------------------------------------------------------------------
 # Piecewise forcing
 #
 #     g(x) = jet_lat * Ly + slope * (x - Lx/2)          (tilted jet axis)
@@ -76,7 +73,6 @@ def sine(state, grid, derivative, # add state as first argument if time-dependen
 #                 amp * sin(pi * (y - g(x)) / (Ly - g(x)))  , y >= g(x)
 #
 #     amp = tau0 * 2*pi / (amp_span * Ly)
-## ---------------------------------------------------------------------------
 def piecewise(state, grid, derivative, # add state as first argument if time-dependent
               tau0=1.0, slope=0.2, jet_lat=0.5, amp_span=0.9,
               **kwargs):
@@ -103,13 +99,6 @@ def piecewise(state, grid, derivative, # add state as first argument if time-dep
 def split_cosine(state, grid, derivative, # add state as first argument if time-dependent
                  A=1.0, y_split=None,
                  **kwargs):
-    """
-    Piecewise cosine wind forcing (mentor's spec):
-        F(y) = -A*cos(y)   for 0 < y < y_split
-                A*cos(y)   for y_split < y < Ly
-    Constant in x and time. y_split defaults to Ly/2 (= pi on a 2*pi domain).
-    Intended for doubly-periodic runs (penalty = 0, bc = periodic).
-    """
     Nx = grid.Nx
     Ny = grid.Ny
     if y_split is None:
@@ -119,6 +108,37 @@ def split_cosine(state, grid, derivative, # add state as first argument if time-
     y = torch.linspace(0, grid.Ly, Ny, device=grid.device)[None, :, None]  # (1,Ny,1)
 
     w = torch.where(y < y_split, -A * torch.cos(y), A * torch.cos(y)) + 0.0 * x  # (1,Ny,Nx)
+
+    return to_spectral(w)
+
+def split_sine(state, grid, derivative,
+               A=1.0, y_split=None,
+               **kwargs):
+    """
+    Piecewise sine wind forcing:
+        F(y) = -A*sin(2y)   for 0 < y < y_split
+                A*sin(2y)   for y_split < y < Ly
+
+    For Ly = 2*pi:
+        F(y) = -A*sin(2y), 0 < y < pi
+               A*sin(2y), pi < y < 2*pi
+    """
+
+    Nx = grid.Nx
+    Ny = grid.Ny
+
+    if y_split is None:
+        y_split = grid.Ly / 2
+
+    x = torch.linspace(0, grid.Lx, Nx, device=grid.device)[None, None, :]
+    y = torch.linspace(0, grid.Ly, Ny, device=grid.device)[None, :, None]
+
+    # sign change at y = pi
+    w = torch.where(
+        y < y_split,
+        -A * torch.sin(2 * y),
+        A * torch.sin(2 * y)
+    ) + 0.0 * x
 
     return to_spectral(w)
 ####################################################################################################
@@ -132,6 +152,7 @@ fc_library = {
     'sine': sine,
     'piecewise': piecewise,
     'split_cosine': split_cosine,
+    'split_sine': split_sine,
 }
 
 def solve_forcing(_fc):
