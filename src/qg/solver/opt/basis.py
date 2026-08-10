@@ -1,23 +1,45 @@
 import torch
 import numpy as np
 
-@staticmethod
-def puv(qh, derivative):
-    ph = derivative.inv_laplacian * qh
-    uh = -1 * derivative.dy * ph
-    vh = derivative.dx * ph
-    return ph, uh, vh
+# CU compatibility workaround
+def abs(x):
+    if x.is_cuda:
+        return torch.sqrt(x.real**2 + x.imag**2)
+    else:
+        return torch.abs(x)
+
+
+def int_sq(y):
+    Y = torch.sum(abs(y[:, 0])**2) + 2*torch.sum(abs(y[:, 1:])**2)
+    return Y
+
 
 class _state:
-    def __init__(self, qh, dt, flow, derivative):
+
+    @staticmethod
+    def _cph(derivative, qh):
+        return derivative.inv_laplacian * qh
+
+    @staticmethod
+    def _cuvh(derivative, ph):
+        return -1 * derivative.dy * ph, derivative.dx * ph
+
+    @staticmethod
+    def energy(derivative, qh):
+        ph = _state._cph(derivative, qh)
+        uh, vh = _state._cuvh(derivative, ph)
+        return 0.5 * (int_sq(uh) + int_sq(vh))
+
+    def __init__(self, qh, dt, derivative, 
+            potential=lambda *args: None,
+            flow=lambda *args: None
+        ):
         self.t = 0.0
         self.dt = dt
         self.derivative = derivative
-        self.flow = flow
-        
-        # potential flow velocities; set by bc
-        # self.uh_potential = 0
-        # self.vh_potential = 0
+
+        self.potential = potential # can include potential flow velocities
+        self.flow = flow # can include 0th-order potential flow velocities
         
         self._qh = None
         self._ph = None
@@ -27,13 +49,18 @@ class _state:
 
         self.qh = qh
 
+    def sync_p(self):
+        return _state._cph(self.derivative, self._qh)
+
+    def sync_uv(self):       
+        return _state._cuvh(self.derivative, self._ph)
+
     def sync(self):
-        self._ph, self._uh, self._vh = puv(self._qh, self.derivative)
-        self.flow(self) # apply puv conditions
-        
-        # self._uh = uh + self.uh_potential
-        # self._vh = vh + self.vh_potential
-        
+        self._ph = self.sync_p() # homogenuous streamfunction soln
+        self.potential(self) # apply particular streamfunction soln
+        self._uh, self._vh = self.sync_uv() # homogenous uv soln
+        self.flow(self) # apply particular uv soln
+
         self._needs_sync = False
 
     def ensure_sync(self):

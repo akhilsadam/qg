@@ -1,7 +1,7 @@
 from qg.solver.util import _Math
 
-from qg.solver.opt.operator.jacobian import jacobian_pq
-from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty, brinkman_friction_slip_w_pot_penalty
+from qg.solver.opt.operator.explicit import jacobian_pq, beta_term
+from qg.solver.opt.operator.obstacle import solve_mask, brinkman_no_slip_penalty, brinkman_friction_slip_penalty, brinkman_friction_slip_w_pot_penalty, potential_penalty
 from qg.solver.opt.operator.vortex import vortex_stretching
 # from qg.solver.opt.operator.pde_rpn import compile_pde_rpn
 from qg.solver.opt.operator.rpn import compile_pde_rpn
@@ -17,6 +17,7 @@ def _compile_custom_pde_if_present(params, derivative):
 def define_explicit_operator(param, grid, derivative, logger, args, sources, **kwargs):
     patches = []
     split_patches = []
+    potential_patches = []
     
     compiled_pde = _compile_custom_pde_if_present(param.pde, derivative)
 
@@ -35,16 +36,20 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
         patches.append(lambda op, state: param.forcing(state, grid, derivative))
         
     if param.pde.penalty > 0:
+
+        mask = solve_mask(param.mask, grid, derivative)
         
         if param.pde.friction is not None:
             logger.info("Using Brinkman penalty (friction-slip) operator")
-            brinkman_penalty = brinkman_friction_slip_penalty
+            brinkman_penalty = brinkman_friction_slip_w_pot_penalty
+            potential_patches.append(lambda op, state: potential_penalty(op, state, *mask(op, state)))
+
         else:
             logger.info("Using Brinkman penalty (no-slip) operator")
             brinkman_penalty = brinkman_no_slip_penalty
-        
-        mask = solve_mask(param.mask, grid, derivative)
+
         patches.append(lambda op, state: brinkman_penalty(op, state, *mask(op, state)))
+
         
     # if param.pde.rossby_radius is not None:
     #     logger.info("Using vortex stretching operator")
@@ -56,13 +61,13 @@ def define_explicit_operator(param, grid, derivative, logger, args, sources, **k
         if compiled_pde.nonlinear_source is not None:
             patches.append(lambda op, state: compiled_pde.nonlinear_source(state))
     else:
-        patches.append(jacobian_pq)
+        patches.extend([jacobian_pq, beta_term(param.pde.B)])
 
     if param.integrator.split_bc and len(split_patches)==0:
         logger.warn('No boundary condition or operators to split; ignoring split_bc')
         param.integrator.split_bc = False
             
-    return Operator(*args, patch_list=patches, split_patch_list=split_patches)
+    return Operator(*args, patch_list=patches, split_patch_list=split_patches), Operator(*args, patch_list=potential_patches)
         
 class Operator:
     def __init__(self, dt, grid, derivative, params, patch_list = [], split_patch_list = []):        
@@ -83,6 +88,9 @@ class Operator:
       
     def __repr__(self):
         return (f"Operator: device={self.device}")  
+
+    def __call__(self, state):
+        return [f(self, state) for f in self.patch_list]
 
 ## special implicit linear operator (since this is the only one for now)
 
@@ -109,8 +117,9 @@ class ImplicitLinearOperator(_Math):
         # then bottom drag: - mu omega
         # then Coriolis with beta term: - beta d psi/ dx (where omega = del^2 psi)
         
-        return nu * self.derivative.laplacian - mu - B * self.derivative.dx * self.derivative.inv_laplacian
+        return nu * self.derivative.laplacian - mu # - B * self.derivative.dx * self.derivative.inv_laplacian
 
     def __repr__(self):
         return (f"ImplictLinearOperator(nu={self.params.nu}, mu={self.params.mu},"
                 f"B={self.params.B}, device={self.device})")
+

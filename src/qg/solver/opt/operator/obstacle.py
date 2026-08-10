@@ -147,21 +147,28 @@ def brinkman_friction_slip_penalty(op, state, chi, chi_velocity):
     v_chi = boundary * dvn + (interior * dun + chi * dvt) * friction
 
     # to be damped for no tangential stress
-    ut_h = to_spectral(tdot)
-    dx_ut = to_physical(op.derivative.dx * ut_h)
-    dy_ut = to_physical(op.derivative.dy * ut_h)
-    tan_stress = to_spectral(normal_x * dx_ut + normal_y * dy_ut) * friction
+    # ut_h = to_spectral(tdot)
+    # dx_ut = to_physical(op.derivative.dx * ut_h)
+    # dy_ut = to_physical(op.derivative.dy * ut_h)
+    # tan_stress = to_spectral(normal_x * dx_ut + normal_y * dy_ut) * friction
 
 
 
     u_chi_h = to_spectral(u_chi)
     v_chi_h = to_spectral(v_chi)
-    # q_chi_h = to_spectral(q_chi)
+    chi_lg = to_physical(op.derivative.blur * to_spectral(chi))
+    q_chi_h = to_spectral(q * chi_lg)
     
     # sponge = (-1 * op.derivative.dx * v_chi_h + op.derivative.dy * u_chi_h ) / eta # - d/dx(chi*v) + d/dy(chi*u) # surface sponge
 
-    sponge = - tan_stress / eta
-    # - q_chi_h
+    # sponge = - tan_stress / eta
+    sponge = - q_chi_h / eta
+
+    # psi sponge
+    # p = to_physical(state.ph)
+    # p_chi = p * chi
+    # sponge = sponge - op.derivative.inv_laplacian**2 * (q_chi_h / eta)
+
     return sponge
 
     
@@ -190,7 +197,69 @@ def brinkman_friction_slip_w_pot_penalty(op, state, chi, chi_velocity):
     
     return sponge
 
+
+def potential_penalty(op, state, chi, chi_velocity):
+    """
+    Computes the streamfunction penalization for mask (chi) in spectral space (h).
+    """
+    eta = op.params.penalty # no need for dt, normalized
+
+    ph_h = state._ph
+    ph_prev = getattr(state, '_ph_prev', 0.0 * ph_h)
+    ph_h_prev = getattr(state, '_ph_h_prev', 0.0)
+
+    ph = ph_prev + (ph_h - ph_h_prev)
+
+    p = to_physical(ph)
+    ph = to_spectral(p / (1 + chi / eta))
+
+    # ph_chi = to_spectral(p * chi)
+    # ph = ph - ph_chi / eta
+
+    # print("Max ph after update:", torch.max(torch.abs(ph.real)).item())
+
+    state._ph = ph
+    setattr(state, '_ph_prev', ph)
+    setattr(state, '_ph_h_prev', ph_h)
+
+    ##### unstable as (with/without demean) for any derivative scaling
+
+    # state._ph = ph
+    # setattr(state, '_ph_prev', ph)
+    # setattr(state, '_ph_h_prev', ph_h)
+
+    # ph_h = state._ph
+    # ph_prev = getattr(state, '_ph_prev', 0.0 * ph_h)
+    # ph_h_prev = getattr(state, '_ph_h_prev', 0.0)
+
+    # p_prev = to_physical(ph_prev)
+    # p_chi = p_prev * chi
+
+    # mu_chi = torch.mean(p_chi, dim=(-2,-1), keepdim=True) / torch.mean(chi, dim=(-2,-1), keepdim=True)
+    # p_chi = (p_prev - mu_chi) * chi
+
+    # ph_chi_prev = to_spectral(p_chi) / eta
     
+    # ph = ph_prev - op.derivative.inv_laplacian * ph_chi_prev + (ph_h - ph_h_prev)
+
+    # print("Max ph after update:", torch.max(torch.abs(ph.real)).item())
+
+    # state._ph = ph
+    # setattr(state, '_ph_prev', ph)
+    # setattr(state, '_ph_h_prev', ph_h)
+
+    ##### too local, doesn't regularize
+    # ph_h = state._ph
+    # ph_p = getattr(state, '_ph_p', 0.0)
+
+    # p_split = to_physical(ph_h + ph_p) # + chi/tau ph_0
+    # lhs = (1 + chi / eta)
+    # ph = op.derivative.dealias(to_spectral(p_split / lhs))
+    
+    # state._ph = ph
+    # setattr(state, '_ph_p', ph - ph_h)
+    #####
+        
     # modify flow field inside obstacle
     
     # # get closest point along normal

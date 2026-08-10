@@ -69,7 +69,6 @@ class Derivative:
             + to_physical(ay_h) * to_physical(by_h)
         )
 
-        
     def to(self, device):
         self.device = device
         self.dx = self.dx.to(device)

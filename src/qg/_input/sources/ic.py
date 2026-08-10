@@ -1,17 +1,5 @@
 import torch
-from qg.solver.opt.basis import puv
-
-# CU compatibility workaround
-def abs(x):
-    if x.is_cuda:
-        return torch.sqrt(x.real**2 + x.imag**2)
-    else:
-        return torch.abs(x)
-
-
-def int_sq(y):
-    Y = torch.sum(abs(y[:, 0])**2) + 2*torch.sum(abs(y[:, 1:])**2)
-    return Y
+from qg.solver.opt.basis import _state
 
 # Generates initial conditions based on specified energy and wavenumber limits
 def _init_randn(grid, derivative,
@@ -37,8 +25,7 @@ def _init_randn(grid, derivative,
     qh[k == 0.0] = 0.0
     
     # normalize to specified energy
-    ph, uh, vh = puv(qh, derivative)
-    E = 0.5 * (int_sq(uh) + int_sq(vh))
+    E = _state.energy(derivative, qh)
     qh *= torch.sqrt(energy / E)
     
     # store the initial condition for persistent use

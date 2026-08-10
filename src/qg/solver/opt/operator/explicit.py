@@ -53,3 +53,5 @@ def advection_uv(op, state):
     return x_advh, y_advh
 
     
+def beta_term(B):
+    return lambda op, state: - B * state.vh

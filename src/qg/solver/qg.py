@@ -13,7 +13,7 @@ from qg.solver.opt.derivative import Derivative
 from qg.solver.opt.operator import ImplicitLinearOperator, define_explicit_operator
 from qg.solver.integrator import Integrator
 
-from qg.solver.opt.operator.jacobian import advection_uv
+# from qg.solver.opt.operator.explicit import advection_uv
 
 import os
 import logging
@@ -40,7 +40,7 @@ class QG():
         self.grid = grid(**param.grid)
         self.derivative = derivative(self.grid).to(self.grid.device)
         self.implicit_linear_operator = implicit_linear_operator(self.grid, self.derivative, param.pde)
-        self.operator = define_explicit_operator(param, self.grid, self.derivative, self.logger,
+        self.operator, self.potential = define_explicit_operator(param, self.grid, self.derivative, self.logger,
                                         args=(param.time.dt, self.grid, self.derivative, param.pde),
                                         sources=explicit_sources) 
         
@@ -83,7 +83,7 @@ class QG():
         # state.dt = self.dt # Not sure if this is necessary, need to think about adaptive time stepping TODO
 
     def init(self):  
-        return _state(self.param.ic(self.grid, self.derivative), self.dt, self.flow, self.derivative) # In spectral space
+        return _state(self.param.ic(self.grid, self.derivative), self.dt, self.derivative, potential=self.potential, flow=self.flow) # In spectral space
           
     def _run(self, prof=None, nan_check=False, lim_check=-1):
         save_rate = self.param.time.save_rate
