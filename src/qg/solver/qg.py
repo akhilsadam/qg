@@ -172,7 +172,7 @@ class QG():
         if dt is None:
             dt = self.dt
         qh = to_spectral(u) # assumes B H W, vorticity only
-        state = _state(qh, dt, self.flow, self.derivative) # In spectral space
+        state = _state(qh, dt, self.derivative, flow=self.flow) # In spectral space
         for _ in range(n_steps):
             self.step(state)
         return state._out()[:,None,None,...]  # B H W
