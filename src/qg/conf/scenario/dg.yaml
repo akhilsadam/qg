@@ -3,19 +3,19 @@
 
 qg:
   grid:
-    Nx: 256
-    Ny: 256
+    Nx: 32
+    Ny: 32
     Lx: 12.566370614359172  # 4*pi
     Ly: 12.566370614359172  # 4*pi
 
   time:
     dt: 0.001 # 0.0005
-    T: 120
+    T: 24
     save_rate: 200 # 1024
   
   pde:
     nu: 5e-4
-    friction: 1.0
+    friction: 0.0
     penalty: 1.25
   
   ic:
@@ -37,7 +37,7 @@ qg:
     D: 0.1
     E: 0.5
     F: 0
-    G: 0
+    G: 0.5
     H: 0 
   #   function: local_cosines
   #   A: [-0.15, 0.15]

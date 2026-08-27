@@ -3,20 +3,21 @@
 
 qg:
   grid:
-    Nx: 256
-    Ny: 256
+    Nx: 128
+    Ny: 128
     Lx: 12.566370614359172  # 4*pi
     Ly: 12.566370614359172  # 4*pi
 
   time:
     dt: 0.001 # 0.0005
-    T: 24 #60
+    T: 4 #60
     save_rate: 200 # 1024
   
   pde:
     nu: 5e-4
     friction: 0.0
     penalty: 1.25
+    B: 1.0
   
   ic:
     function: randn

@@ -168,10 +168,11 @@ class QG():
         
         return solution_torch
 
-    def nn_step(self, u, dt=None):
+    def nn_step(self, u, dt=None, n_steps=1):
         if dt is None:
             dt = self.dt
         qh = to_spectral(u) # assumes B H W, vorticity only
         state = _state(qh, dt, self.flow, self.derivative) # In spectral space
-        self.step(state)
+        for _ in range(n_steps):
+            self.step(state)
         return state._out()[:,None,None,...]  # B H W
