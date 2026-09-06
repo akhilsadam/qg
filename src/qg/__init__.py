@@ -12,7 +12,7 @@ from qg.solver.qg import QG
 # expose basic config from hydra
 
 
-def direct_solver(config_overrides: dict = None) -> QG:
+def solver(config_overrides: dict = None) -> QG:
     """Initialize QG solver with basic config.
     
     Args:
@@ -23,7 +23,7 @@ def direct_solver(config_overrides: dict = None) -> QG:
         QG solver instance ready to run.
     
     Example:
-        >>> qg = direct_solver({'qg.grid.Nx': 256, 'qg.grid.Ny': 256})
+        >>> qg = solver({'qg.grid.Nx': 256, 'qg.grid.Ny': 256})
         >>> data = qg.solve(save_path='./output')
     """
     from hydra import initialize, compose, GlobalHydra

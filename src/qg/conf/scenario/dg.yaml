@@ -17,7 +17,9 @@ qg:
     nu: 5e-4
     friction: 0.0
     penalty: 1.25
-  
+    rpn: q psi jacobian alpha *
+    alpha: 3
+    
   ic:
     function: randn
     energy: 0.0 #5
