@@ -29,9 +29,11 @@ dependencies = [
 [options.packages.find]
 where = "src"
 
+[tool.setuptools]
+include-package-data = true
+
 [tool.setuptools.package-data]
-# Include all .json files in the "conf" directory
-"conf" = ["*.yaml"]
+"*" = ["*.yaml"]
 
 [build-system]
 requires = [
