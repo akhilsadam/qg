@@ -9,7 +9,7 @@ class CartesianGrid:
         self.Nx = Nx
         self.Ny = Ny
         
-        if device is None:
+        if device is None or device == "cuda":
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
             self.device = device
