@@ -1,6 +1,6 @@
 [project]
 name = "quasigeostrophic-flow"
-version = "0.2.1"
+version = "0.2.4"
 description = "QG turbulence simulation with Hydra and WandB tracking"
 authors = [
     {name = "Akhil Sadam", email = "sadam.akhil@gmail.com"}
@@ -33,7 +33,7 @@ where = "src"
 include-package-data = true
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml"]
+"qg.conf" = ["*.yaml"]
 
 [build-system]
 requires = [
