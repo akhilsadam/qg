@@ -39,7 +39,7 @@ def solver(config_overrides: dict = None) -> QG:
     register_configs()
     
     # Get rel path to config directory
-    config_dir = Path(os.path.relpath((Path(__file__).parent / "conf").resolve(), Path.cwd()))
+    config_dir = "qg/conf"
 
     # Initialize Hydra with config path
     with initialize(version_base="1.3", config_path=str(config_dir)):
