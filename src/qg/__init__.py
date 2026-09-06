@@ -26,7 +26,7 @@ def solver(config_overrides: dict = None) -> QG:
         >>> qg = solver({'qg.grid.Nx': 256, 'qg.grid.Ny': 256})
         >>> data = qg.solve(save_path='./output')
     """
-    from hydra import initialize, compose
+    from hydra import initialize, compose, GlobalHydra
     from omegaconf import OmegaConf
     from qg.config import register_configs
     import os
