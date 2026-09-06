@@ -38,10 +38,8 @@ def solver(config_overrides: dict = None) -> QG:
     # Register configs
     register_configs()
     
-    # Get abs path to config directory
-    config_dir = (Path(__file__).parent / "conf").resolve()
-    # Now both paths are absolute, so relative_to works
-    config_dir = config_dir.relative_to(Path.cwd(), walk_up=True)
+    # Get rel path to config directory
+    config_dir = Path(os.path.relpath((Path(__file__).parent / "conf").resolve(), Path.cwd()))
 
     # Initialize Hydra with config path
     with initialize(version_base="1.3", config_path=str(config_dir)):
